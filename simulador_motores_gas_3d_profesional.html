@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Planta con motores a gas - Generador síncrono 3D</title>
+<style>
+:root{
+  --bg:#f3efe9;
+  --bg2:#e7e1d6;
+  --panel:#fbfaf7;
+  --ink:#203242;
+  --muted:#6b7c89;
+  --line:#d8d0c5;
+  --cad:#d7ddd9;
+  --cad2:#a6b0b5;
+  --cad3:#7f8d95;
+  --copper:#b97036;
+  --olive:#60745a;
+  --olive2:#83947f;
+  --teal:#2b8078;
+  --blue:#456cc4;
+  --red:#bf5861;
+  --amber:#e1a43f;
+  --shadow:0 12px 36px rgba(44,45,56,.10);
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:linear-gradient(180deg,var(--bg) 0%,var(--bg2) 100%);color:var(--ink)}
+.app{display:grid;grid-template-columns:1.55fr .95fr;gap:16px;padding:16px;min-height:100vh}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow)}
+.left{display:grid;grid-template-rows:auto 1fr auto auto;gap:16px}
+.right{display:grid;grid-template-rows:auto auto auto 1fr;gap:16px}
+.header{display:flex;align-items:center;justify-content:space-between;padding:16px 18px}
+.header h1{margin:0;font-size:1.15rem}.sub{color:var(--muted);font-size:.88rem;margin-top:4px}
+.badge{padding:9px 14px;border-radius:999px;background:#f0f5ed;border:1px solid #cad6c4;color:#3f6040;font-weight:800;font-size:.82rem}
+.sceneWrap{padding:14px;display:grid;grid-template-columns:1.45fr .95fr;gap:14px;min-height:560px}
+.sceneBox{position:relative;border:1px solid var(--line);border-radius:18px;overflow:hidden;background:radial-gradient(circle at 20% 10%,#fcfdfd 0%,#ecefed 55%,#dadfdc 100%)}
+#scene3d{width:100%;height:100%;min-height:520px;display:block;touch-action:none;cursor:grab}
+.overlayTop{position:absolute;left:12px;top:12px;display:flex;gap:8px;flex-wrap:wrap;z-index:4}
+.chip{background:rgba(255,255,255,.88);backdrop-filter:blur(6px);border:1px solid #d7d0c5;border-radius:999px;padding:8px 11px;font-size:.79rem;font-weight:700;color:#425565}
+.legend{position:absolute;left:12px;bottom:12px;display:flex;gap:8px;flex-wrap:wrap;z-index:4}
+.dot{width:11px;height:11px;border-radius:50%;display:inline-block;vertical-align:middle;margin-right:5px}
+.dynamicTag{position:absolute;transform:translate(-50%,-50%);pointer-events:none;display:none;z-index:5;background:rgba(22,30,38,.88);color:#fff;border:1px solid rgba(255,255,255,.16);padding:6px 8px;border-radius:10px;font-size:.75rem;font-weight:700;white-space:nowrap}
+.dynamicTag.active{background:rgba(37,83,92,.92);box-shadow:0 0 0 2px rgba(93,183,177,.32)}
+.controls{display:grid;gap:12px}
+.block{background:#f5f1ea;border:1px solid var(--line);border-radius:16px;padding:12px}
+.block h3{margin:0 0 10px 0;font-size:.93rem}
+.btnRow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btnRow3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+button{border:none;border-radius:12px;padding:12px;font-weight:800;background:#ede8df;color:var(--ink);cursor:pointer;box-shadow:inset 0 0 0 1px #d8d0c5}
+button:hover{filter:brightness(.98)}
+button.active{background:var(--olive);color:#fff;box-shadow:none}
+button.mode.active{background:var(--blue)}
+button.warn{background:#4a2e31;color:#fff}
+label{display:block;font-size:.83rem;color:var(--muted);margin-bottom:6px}
+select{width:100%;padding:11px 12px;border-radius:11px;border:1px solid #cfc6b8;background:#fff;color:var(--ink);font-weight:800}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tip{font-size:.8rem;color:var(--muted);line-height:1.35}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:0 14px 14px}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px}
+.card .k{font-size:.8rem;color:var(--muted);margin-bottom:8px}
+.card .v{font-size:1.6rem;font-weight:900;line-height:1}.card .u{font-size:.8rem;color:var(--muted);margin-top:5px}
+.status{display:flex;flex-wrap:wrap;gap:10px;padding:0 14px 14px}
+.pill{padding:9px 12px;border-radius:999px;font-size:.83rem;font-weight:800;background:#f0f4f8;border:1px solid #d8e0ea}.pill.good{background:#eef7ee;border-color:#ccd9cc;color:#3b6d44}.pill.warn{background:#fff5ea;border-color:#e6c998;color:#8a5c10}
+.infoBlock{padding:14px}
+.infoBox{border:1px solid var(--line);border-radius:16px;padding:12px;background:linear-gradient(180deg,#fff 0%,#f8f5ef 100%)}
+.infoBox .title{font-size:.95rem;font-weight:900;margin-bottom:8px}
+.infoGrid{display:grid;grid-template-columns:1fr;gap:6px}
+.read{display:flex;justify-content:space-between;gap:10px;font-size:.84rem}.read span{color:var(--muted)}.read b{color:var(--ink);text-align:right}
+.graphs{padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.gbox{border:1px solid var(--line);border-radius:18px;padding:10px;background:linear-gradient(180deg,#fff 0%,#f8f5ef 100%)}
+.gtitle{font-weight:900;font-size:.94rem;margin:0 0 8px 0}
+.canvasSmall{height:215px}.canvasWide{height:170px}
+canvas{width:100%;display:block}
+.footer{padding:0 14px 14px;color:var(--muted);font-size:.82rem}
+.note{font-size:.78rem;color:var(--muted);margin-top:8px;line-height:1.35}
+@media (max-width:1180px){.app{grid-template-columns:1fr}.sceneWrap,.graphs{grid-template-columns:1fr}.cards{grid-template-columns:repeat(2,1fr)}}
+
+/* Tema industrial: azul acero, grafito, aluminio y acentos cobre. */
+.sceneWrap{grid-template-columns:minmax(0,1fr);min-height:0}
+.controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.controls .block:nth-child(3){grid-column:1/-1}
+.controls .practiceArea{grid-column:1/-1}
+.controls .block:last-child{grid-column:1/-1}
+@media(max-width:800px){.controls{grid-template-columns:1fr}.controls .block:nth-child(3),.controls .practiceArea,.controls .block:last-child{grid-column:1}}
+
+:root{--bg:#eaf0f5;--bg2:#d9e3eb;--panel:#ffffff;--ink:#182d40;--muted:#617487;--line:#c7d4df;--cad:#d9e5ec;--cad2:#a4b8c7;--cad3:#688297;--copper:#c7823e;--olive:#156e80;--olive2:#2c8a98;--teal:#047a90;--blue:#255eae;--red:#b64e60;--amber:#d79b3c;--shadow:0 10px 32px rgba(20,40,60,.08)}
+body{background:linear-gradient(145deg,#ecf3f8,#dce6ee 75%)}
+.panel{border:1px solid #c4d2df;box-shadow:var(--shadow)}
+.header{background:#192d40;color:#f4f8fb;border-color:#304559}
+.header h1{letter-spacing:.25px}.header .sub{color:#b7cadb}.badge{background:#255064;border-color:#447389;color:#ecf7ff}
+.block{background:#f0f5f8;border-color:#d5e1eb}.block h3{color:#23445c}
+button{background:#e7eef4;box-shadow:inset 0 0 0 1px #bdccd8;color:#1d394c}
+button.active{background:#116b81;color:#fff}button.mode.active{background:#285a96}
+button.warn{background:#994955;color:white}
+select{background:#fff;border:1px solid #b7cad8;color:#1c3346}
+select:focus{outline:2px solid #4692b2;outline-offset:1px}
+.sceneBox{background:radial-gradient(circle at 30% 30%,#29465c 0%,#0e1f2f 85%);border-color:#3f6176;min-height:570px;height:570px}
+.chip{background:#173449e9;color:#d7edf7;border-color:#416778}
+.dynamicTag{background:#112b3cec;border-color:#3d6e87;color:#f0f7fa}.dynamicTag.active{background:#046f86;box-shadow:0 0 0 2px #76cee96b}
+.card{background:linear-gradient(155deg,#fff,#f6f9fc);border-color:#d0deea;border-top:3px solid #36849b}.card:nth-child(3n){border-top-color:#bb7b43}.card:nth-child(5n){border-top-color:#6182bd}
+.pill{background:#eaf2f8;border-color:#c9d8e4}.pill.good{background:#e3f2f0;border-color:#a8d1c8;color:#125c58}
+.pill.warn{background:#fdf3e8;border-color:#e8c99f;color:#855315}
+.infoBox,.gbox{background:linear-gradient(170deg,#fff,#f1f6fa);border-color:#cbdbe7}
+.gtitle{color:#2b506a}
+.footer{color:#526e82}.note{color:#587183}
+.practiceArea{display:grid;gap:9px;padding:13px;border:1px solid #c4d8e5;border-radius:13px;background:#e6f0f6}
+.practiceArea b{color:#174861;font-size:.92rem}.practiceArea p{margin:0;color:#3d6277;font-size:.82rem;line-height:1.45}
+.practiceControls{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.practiceControls button{padding:10px;font-size:.83rem}.practiceControls button:first-child{background:#215974;color:#fff;box-shadow:none}
+.legend .chip{font-size:.73rem}
+@media(max-width:570px){.app{padding:8px;gap:10px}.sceneWrap{padding:8px}.graphs{gap:8px;padding:8px}.canvasSmall{height:188px}.canvasWide{height:160px}}
+
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="left">
+    <div class="panel header">
+      <div>
+        <h1>Planta con motores a gas + generador síncrono</h1>
+        <div class="sub">Maqueta 3D estilo CAD · SCADA · fasores · tendencias en tiempo real</div>
+      </div>
+      <div class="badge" id="modeBadge">MODO: AISLADO</div>
+    </div>
+
+    <div class="panel sceneWrap">
+      <div class="sceneBox">
+        <div class="overlayTop">
+          <div class="chip">Arrastra para girar</div>
+          <div class="chip">Rueda para zoom</div>
+          <div class="chip" id="viewChip">Vista general</div>
+        </div>
+        <canvas id="scene3d" aria-label="Maqueta 3D industrial de motor a gas y generador síncrono"></canvas><div id="webglError" style="display:none;position:absolute;inset:0;place-items:center;background:#202e32;color:#fff;text-align:center;padding:24px;z-index:9;">No se pudo activar WebGL. Habilita la aceleración gráfica en Chrome o Edge. El SCADA seguirá funcionando.</div>
+        <div class="legend">
+          <div class="chip"><span class="dot" style="background:#e1a43f"></span>Flujo de gas</div>
+          <div class="chip"><span class="dot" style="background:#2b8078"></span>Potencia eléctrica</div>
+          <div class="chip"><span class="dot" style="background:#bf5861"></span>Polo N</div>
+          <div class="chip"><span class="dot" style="background:#456cc4"></span>Polo S</div>
+        </div>
+        <div class="dynamicTag" id="tagTank"></div>
+        <div class="dynamicTag" id="tagEngine"></div>
+        <div class="dynamicTag" id="tagGen"></div>
+        <div class="dynamicTag" id="tagLoad"></div>
+        <div class="dynamicTag" id="tagGrid"></div><div id="modelNote" class="chip" style="position:absolute;right:12px;bottom:60px;z-index:4;max-width:220px;white-space:normal">Animación mecánica ralentizada para visualizar el movimiento.</div>
+      </div>
+
+      <div class="controls">
+        <div class="block">
+          <h3>Operación</h3>
+          <div class="btnRow3">
+            <button id="btnStart" class="active">Iniciar</button>
+            <button id="btnStop">Detener</button>
+            <button id="btnTrip" class="warn">Paro</button>
+          </div>
+        </div>
+
+        <div class="block">
+          <h3>Conexión</h3>
+          <div class="btnRow">
+            <button id="btnIsland" class="mode active">Aislado</button>
+            <button id="btnGrid" class="mode">Red 60 Hz</button>
+          </div>
+        </div>
+
+        <div class="block">
+          <h3>Parámetros por selección</h3>
+          <div class="grid2">
+            <div>
+              <label>Suministro de gas</label>
+              <select id="gasSel">
+                <option value="low">Bajo · 35 %</option>
+                <option value="mid" selected>Medio · 55 %</option>
+                <option value="high">Alto · 75 %</option>
+                <option value="max">Máximo · 95 %</option>
+              </select>
+            </div>
+            <div>
+              <label>Excitación</label>
+              <select id="excSel">
+                <option value="low">Baja · 80 %</option>
+                <option value="nom" selected>Nominal · 100 %</option>
+                <option value="high">Alta · 120 %</option>
+              </select>
+            </div>
+            <div>
+              <label>Demanda eléctrica</label>
+              <select id="demandSel">
+                <option value="2">Ligera · 2 MW</option>
+                <option value="4" selected>Media · 4 MW</option>
+                <option value="6">Alta · 6 MW</option>
+                <option value="8">Pico · 8 MW</option>
+              </select>
+            </div>
+            <div>
+              <label>Tipo de carga</label>
+              <select id="loadTypeSel">
+                <option value="res" selected>Resistiva</option>
+                <option value="ind">Inductiva</option>
+                <option value="cap">Capacitiva</option>
+              </select>
+            </div>
+            <div>
+              <label>Número de polos</label>
+              <select id="polesSel">
+                <option value="2">2 polos</option>
+                <option value="4" selected>4 polos</option>
+                <option value="8">8 polos</option>
+                <option value="12">12 polos</option>
+              </select>
+            </div>
+            <div>
+              <label>Vista 3D</label>
+              <select id="viewSel">
+                <option value="all" selected>Planta completa</option>
+                <option value="engine">Motor a gas</option>
+                <option value="generator">Generador</option>
+                <option value="cut">Corte interno</option>
+              </select>
+            </div>
+          </div>
+          <div class="note">No hay barras deslizantes: cada cambio se hace seleccionando una condición predefinida.</div>
+        </div>
+
+        <div class="practiceArea">
+          <b>PRÁCTICAS GUIADAS</b>
+          <label for="practiceSel">Selecciona la demostración</label>
+          <select id="practiceSel">
+            <option value="reactiva">1 · Carga resistiva → inductiva</option>
+            <option value="combustible">2 · Gas medio → gas alto</option>
+            <option value="excitacion">3 · Excitación nominal → alta</option>
+          </select>
+          <div class="practiceControls"><button id="practiceReady">Preparar prueba</button><button id="practiceChange">Realizar cambio</button></div>
+          <p id="practiceGuide">Primero prepara la prueba, inicia el motor y después pulsa «Realizar cambio».</p>
+        </div>
+        <div class="block">
+          <h3>Indicador de cambio</h3>
+          <div class="tip" id="activeChange">Selecciona un parámetro para ver qué cambia en la planta.</div>
+          <div class="note" id="lookNote">La cámara puede enfocarse automáticamente al equipo afectado.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cards">
+      <div class="card"><div class="k">Frecuencia</div><div class="v" id="freqCard">60.00</div><div class="u">Hz</div></div>
+      <div class="card"><div class="k">Velocidad</div><div class="v" id="rpmCard">1800</div><div class="u">rpm</div></div>
+      <div class="card"><div class="k">Voltaje</div><div class="v" id="voltCard">13.80</div><div class="u">kV</div></div>
+      <div class="card"><div class="k">Corriente</div><div class="v" id="currCard">0</div><div class="u">A</div></div>
+      <div class="card"><div class="k">Potencia activa</div><div class="v" id="mwCard">0.00</div><div class="u">MW</div></div>
+      <div class="card"><div class="k">Potencia reactiva</div><div class="v" id="mvarCard">0.00</div><div class="u">MVAr</div></div>
+      <div class="card"><div class="k">Gas del motor</div><div class="v" id="gasCard">55</div><div class="u">% de consigna</div></div>
+      <div class="card"><div class="k">Intercambio con red</div><div class="v" id="netCard">N/A</div><div class="u">MW · + toma / − entrega</div></div>
+      <div class="card"><div class="k">Reactiva carga</div><div class="v" id="qloadCard">0.00</div><div class="u">MVAr · + inductiva / − capacitiva</div></div>
+      <div class="card"><div class="k">Reactiva con red</div><div class="v" id="qnetCard">N/A</div><div class="u">MVAr · + toma / − entrega</div></div>
+    </div>
+
+    <div class="status">
+      <div class="pill" id="statePill">Estado: servicio</div>
+      <div class="pill good" id="effectPill">Efecto: velocidad y MW</div>
+      <div class="pill warn" id="loadPill">Carga: resistiva</div>
+    </div>
+  </div>
+
+  <div class="right">
+    <div class="panel infoBlock">
+      <div class="infoBox">
+        <div class="title">Qué mirar ahora</div>
+        <div id="electricConnection" style="padding:10px;margin-bottom:10px;border-radius:10px;background:#e5f1f7;color:#1d5268;font-weight:800;font-size:.83rem">Red desconectada · La carga local funciona en modo aislado</div>
+        <div class="infoGrid">
+          <div class="read"><span>Variable</span><b id="infoVar">—</b></div>
+          <div class="read"><span>Mirar en planta</span><b id="infoPlant">—</b></div>
+          <div class="read"><span>Debe ocurrir</span><b id="infoEffect">—</b></div>
+          <div class="read"><span>Mirar en gráficas</span><b id="infoGraph">—</b></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel graphs">
+      <div class="gbox">
+        <div class="gtitle">Ondas trifásicas</div>
+        <canvas id="waveCanvas" width="520" height="215" class="canvasSmall"></canvas>
+      </div>
+      <div class="gbox">
+        <div class="gtitle">Diagrama fasorial</div>
+        <canvas id="phasorCanvas" width="520" height="215" class="canvasSmall"></canvas>
+      </div>
+    </div>
+
+    <div class="panel graphs" style="padding-top:0;grid-template-columns:1fr 1fr;">
+      <div class="gbox"><div class="gtitle">Tendencia de frecuencia</div><canvas id="freqTrend" width="420" height="170" class="canvasWide"></canvas></div>
+      <div class="gbox"><div class="gtitle">Tendencia de potencia</div><canvas id="powerTrend" width="420" height="170" class="canvasWide"></canvas></div>
+      <div class="gbox"><div class="gtitle">Tendencia de tensión</div><canvas id="voltTrend" width="420" height="170" class="canvasWide"></canvas></div>
+      <div class="gbox"><div class="gtitle">Reactiva del generador</div><canvas id="reactTrend" width="420" height="170" class="canvasWide"></canvas></div>
+      <div class="gbox"><div class="gtitle">Reactiva de la carga</div><canvas id="loadQTrend" width="420" height="170" class="canvasWide"></canvas></div>
+      <div class="gbox"><div class="gtitle">Intercambio activo con red</div><canvas id="netTrend" width="420" height="170" class="canvasWide"></canvas></div>
+    </div>
+
+    <div class="panel footer">
+      Proceso: <b>gas → motor → eje → generador → carga/red</b>.
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+(()=>{
+const $=id=>document.getElementById(id);
+const canvas=$('scene3d');
+let gl=null;
+try{gl=canvas.getContext('webgl',{antialias:true,alpha:false}) || canvas.getContext('experimental-webgl');}catch(e){}
+const webglAvailable=!!gl;
+const fallbackCtx=webglAvailable?null:canvas.getContext('2d',{alpha:false});
+if(!webglAvailable){
+ $('webglError').style.display='none';
+ gl=new Proxy({}, {get(_t,key){if(key==='getShaderParameter'||key==='getProgramParameter')return ()=>true;
+  if(key==='getAttribLocation')return ()=>0;if(key==='getUniformLocation')return ()=>({});
+  if(key==='createShader'||key==='createProgram'||key==='createBuffer')return ()=>({});
+  if(typeof key==='string'&&key.toUpperCase()===key)return 1;
+  return ()=>undefined;
+ }});
+}
+const clamp=(a,l,h)=>Math.max(l,Math.min(h,a));
+const mix=(a,b,k)=>a+(b-a)*k;
+const palette={steel:[.58,.63,.63], dark:[.24,.29,.32], dark2:[.17,.22,.25], silver:[.81,.85,.83], light:[.90,.91,.87], copper:[.75,.39,.18], yellow:[.98,.66,.19], green:[.24,.69,.57], blue:[.29,.44,.83], red:[.86,.24,.29], ground:[.68,.71,.68], concrete:[.39,.43,.43], gas:[.96,.70,.22]};
+const vsub=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]],vadd=(a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]],vmul=(a,n)=>a.map(x=>x*n),dot=(a,b)=>a.reduce((x,y,i)=>x+y*b[i],0),cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]],norm=a=>{let d=Math.hypot(...a)||1;return a.map(x=>x/d)};
+const M={id:()=>[1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1],mul:(a,b)=>{let o=new Array(16).fill(0);for(let c=0;c<4;c++)for(let r=0;r<4;r++)for(let k=0;k<4;k++)o[c*4+r]+=a[k*4+r]*b[c*4+k];return o;},trans:(x,y,z)=>[1,0,0,0, 0,1,0,0, 0,0,1,0, x,y,z,1],scale:(x,y,z)=>[x,0,0,0, 0,y,0,0, 0,0,z,0, 0,0,0,1],rx:t=>{let c=Math.cos(t),s=Math.sin(t);return[1,0,0,0, 0,c,s,0, 0,-s,c,0, 0,0,0,1]},ry:t=>{let c=Math.cos(t),s=Math.sin(t);return[c,0,-s,0, 0,1,0,0, s,0,c,0, 0,0,0,1]},persp:(f,a,n,fa)=>{let t=1/Math.tan(f/2);return[t/a,0,0,0, 0,t,0,0, 0,0,(fa+n)/(n-fa),-1, 0,0,2*fa*n/(n-fa),0]},look:(eye,target,up=[0,1,0])=>{const z=norm(vsub(eye,target)),x=norm(cross(up,z)),y=cross(z,x);return[x[0],y[0],z[0],0, x[1],y[1],z[1],0, x[2],y[2],z[2],0, -dot(x,eye),-dot(y,eye),-dot(z,eye),1]},apply:(m,v)=>{let a=[v[0],v[1],v[2],1],r=[0,0,0,0];for(let i=0;i<4;i++)for(let j=0;j<4;j++)r[i]+=m[j*4+i]*a[j];return r}};
+const vertexSrc=`attribute vec3 aPos; attribute vec3 aNormal; uniform mat4 uM;uniform mat4 uVP;varying vec3 vNorm;varying vec3 vWorld; void main(){vec4 p=uM*vec4(aPos,1.0);vWorld=p.xyz;vNorm=mat3(uM)*aNormal;gl_Position=uVP*p;}`;
+const fragSrc=`precision mediump float; varying vec3 vNorm; varying vec3 vWorld;uniform vec3 uColor;uniform vec3 uEye;uniform float uMetal;uniform float uAlpha;uniform float uEmission;void main(){vec3 n=normalize(vNorm);vec3 sun=normalize(vec3(-0.45,1.0,0.85));vec3 view=normalize(uEye-vWorld);float ndl=max(dot(n,sun),0.0);float ndl2=max(dot(n,normalize(vec3(0.7,.5,-.6))),0.0);float spec=pow(max(dot(reflect(-sun,n),view),0.0), mix(16.0,62.0,uMetal))* (.12+.68*uMetal);float fres=pow(1.0-max(dot(n,view),0.0),3.0)*.16;vec3 light=uColor*(.30+.56*ndl+.18*ndl2)+vec3(1.0,.92,.78)*spec+vec3(.30,.54,.69)*fres+uColor*uEmission;float d=length(uEye-vWorld);float fog=clamp((d-18.0)/50.0,0.0,.42);gl_FragColor=vec4(mix(light,vec3(.10,.145,.119),fog),uAlpha);}`;
+function shader(src,type){const s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(s));return s;}
+const program=gl.createProgram();gl.attachShader(program,shader(vertexSrc,gl.VERTEX_SHADER));gl.attachShader(program,shader(fragSrc,gl.FRAGMENT_SHADER));gl.linkProgram(program);if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(program));gl.useProgram(program);
+const A={p:gl.getAttribLocation(program,'aPos'),n:gl.getAttribLocation(program,'aNormal')};const U={m:gl.getUniformLocation(program,'uM'),vp:gl.getUniformLocation(program,'uVP'),c:gl.getUniformLocation(program,'uColor'),eye:gl.getUniformLocation(program,'uEye'),met:gl.getUniformLocation(program,'uMetal'),alpha:gl.getUniformLocation(program,'uAlpha'),em:gl.getUniformLocation(program,'uEmission')};
+gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.clearColor(.082,.12,.099,1);gl.enable(gl.CULL_FACE);gl.cullFace(gl.BACK);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
+function geom(){return{p:[],n:[]}}function tri(g,a,b,c,n){g.p.push(...a,...b,...c);g.n.push(...n,...n,...n)}function quad(g,a,b,c,d,n){tri(g,a,b,c,n);tri(g,a,c,d,n)}
+function boxGeo(w,h,d){let g=geom(),x=w/2,y=h/2,z=d/2;const f=[
+[[-x,-y,z],[x,-y,z],[x,y,z],[-x,y,z],[0,0,1]],
+[[x,-y,-z],[-x,-y,-z],[-x,y,-z],[x,y,-z],[0,0,-1]],
+[[x,-y,z],[x,-y,-z],[x,y,-z],[x,y,z],[1,0,0]],
+[[-x,-y,-z],[-x,-y,z],[-x,y,z],[-x,y,-z],[-1,0,0]],
+[[-x,y,z],[x,y,z],[x,y,-z],[-x,y,-z],[0,1,0]],
+[[-x,-y,-z],[x,-y,-z],[x,-y,z],[-x,-y,z],[0,-1,0]]];f.forEach(q=>quad(g,...q));return g}
+function cylinderGeo(r1,r2,length,axis='y',seg=32,arcStart=0,arcEnd=2*Math.PI,caps=true){let g=geom();const p=(a,r,L)=>axis==='x'?[L,Math.cos(a)*r,Math.sin(a)*r]:[Math.sin(a)*r,L,Math.cos(a)*r];const n=(a,dr=0)=>axis==='x'?[dr,Math.cos(a),Math.sin(a)]:[Math.sin(a),dr,Math.cos(a)];const half=length/2;for(let i=0;i<seg;i++){let a=arcStart+(arcEnd-arcStart)*i/seg,b=arcStart+(arcEnd-arcStart)*(i+1)/seg,na=n((a+b)/2,(r1-r2)/length);let lo1=p(a,r2,-half),lo2=p(b,r2,-half),hi1=p(a,r1,half),hi2=p(b,r1,half);quad(g,lo1,lo2,hi2,hi1,na);if(caps){tri(g,p(0,0,half),hi1,hi2,axis==='x'?[1,0,0]:[0,1,0]);tri(g,p(0,0,-half),lo2,lo1,axis==='x'?[-1,0,0]:[0,-1,0]);}}return g}
+function ringGeo(ro,ri,len,axis='x',seg=40,arcStart=0,arcEnd=Math.PI*2){let g=geom();let at=(a,r,L)=>axis==='x'?[L,Math.cos(a)*r,Math.sin(a)*r]:[Math.cos(a)*r,L,Math.sin(a)*r];for(let i=0;i<seg;i++){let a=arcStart+(arcEnd-arcStart)*i/seg,b=arcStart+(arcEnd-arcStart)*(i+1)/seg,aa=[Math.cos((a+b)/2),Math.sin((a+b)/2)];let lo=-len/2,hi=len/2;quad(g,at(a,ro,lo),at(b,ro,lo),at(b,ro,hi),at(a,ro,hi),axis==='x'?[0,...aa]:[aa[0],0,aa[1]]);quad(g,at(b,ri,lo),at(a,ri,lo),at(a,ri,hi),at(b,ri,hi),axis==='x'?[0,-aa[0],-aa[1]]:[-aa[0],0,-aa[1]]);quad(g,at(b,ro,hi),at(a,ro,hi),at(a,ri,hi),at(b,ri,hi),axis==='x'?[1,0,0]:[0,1,0]);quad(g,at(a,ro,lo),at(b,ro,lo),at(b,ri,lo),at(a,ri,lo),axis==='x'?[-1,0,0]:[0,-1,0]);}return g}
+function tubeGeo(points,r=.06,nSides=9){let g=geom();for(let i=0;i<points.length-1;i++){let a=points[i],b=points[i+1],t=norm(vsub(b,a)),right=norm(cross(t,Math.abs(t[1])>.9?[0,0,1]:[0,1,0])),up=cross(t,right);let ring=(p,th)=>vadd(p,vadd(vmul(right,r*Math.cos(th)),vmul(up,r*Math.sin(th))));for(let j=0;j<nSides;j++){let t1=j*2*Math.PI/nSides,t2=(j+1)*2*Math.PI/nSides,normal=norm(vadd(vmul(right,Math.cos((t1+t2)/2)),vmul(up,Math.sin((t1+t2)/2))));quad(g,ring(a,t1),ring(a,t2),ring(b,t2),ring(b,t1),normal)}}return g}
+function bladeGeo(stage, count=22,rad=.92){let g=geom();for(let i=0;i<count;i++){let a=2*Math.PI*i/count, b=a+.17;let radial=(t,r,x)=>[x,r*Math.cos(t),r*Math.sin(t)];let p1=radial(a,.36,stage-.17),p2=radial(b,rad,stage+.17),p3=radial(b+.10,rad,stage+.26),p4=radial(a+.05,.36,stage-.08);let nn=norm(cross(vsub(p2,p1),vsub(p4,p1)));quad(g,p1,p2,p3,p4,nn);quad(g,p4,p3,p2,p1,vmul(nn,-1));}return g}
+function makeGeom(g){let data=new Float32Array(g.p.length+g.n.length);const pb=gl.createBuffer(),nb=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,pb);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(g.p),gl.STATIC_DRAW);gl.bindBuffer(gl.ARRAY_BUFFER,nb);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(g.n),gl.STATIC_DRAW);return{pb,nb,n:g.p.length/3,positions:webglAvailable?null:new Float32Array(g.p)}}
+const cache=new Map();function shared(key,fn){if(!cache.has(key))cache.set(key,makeGeom(fn()));return cache.get(key)}
+const meshes=[];function add(shape,color,pos=[0,0,0],opts={}){let obj={shape,color,pos,rot:opts.rot||[0,0,0],metal:opts.metal??.6,alpha:opts.alpha??1,emission:opts.emission??0,tag:opts.tag||'',spin:opts.spin||'',visible:true,scale:[1,1,1]};meshes.push(obj);return obj}
+function cube(x,y,z,w,h,d,col,opt={}){return add(shared(`b/${w}/${h}/${d}`,()=>boxGeo(w,h,d)),col,[x,y,z],opt)}
+function cyl(x,y,z,rad,len,col,axis='y',opt={}){let segments=opt.seg||28;return add(shared(`c/${rad}/${len}/${axis}/${segments}/${opt.start||0}/${opt.end||6.283185}/${opt.caps!==false}`,()=>cylinderGeo(rad,rad,len,axis,segments,opt.start||0,opt.end||Math.PI*2,opt.caps!==false)),col,[x,y,z],opt)}
+function ring(x,y,z,ro,ri,len,col,opt={}){return add(shared(`r/${ro}/${ri}/${len}/${opt.start||0}/${opt.end||6.283185}`,()=>ringGeo(ro,ri,len,'x',36,opt.start||0,opt.end||Math.PI*2)),col,[x,y,z],opt)}
+function pipe(points,r,color,tag=''){let obj=add(makeGeom(tubeGeo(points,r,10)),color,[0,0,0],{tag});return obj}
+function ball(x,y,z,r,color,opt={}){let g=geom(),seg=14,rings=10;for(let i=0;i<rings;i++)for(let j=0;j<seg;j++){let a=i*Math.PI/rings,b=(i+1)*Math.PI/rings,c=j*2*Math.PI/seg,d=(j+1)*2*Math.PI/seg;let P=(th,ph)=>[r*Math.sin(th)*Math.cos(ph),r*Math.cos(th),r*Math.sin(th)*Math.sin(ph)],aa=P(a,c),bb=P(b,c),cc=P(b,d),dd=P(a,d),n=norm(vadd(vadd(aa,bb),vadd(cc,dd)));quad(g,aa,dd,cc,bb,n);}return add(shared(`sphere/${r}`,()=>g),color,[x,y,z],opt)}
+// GEOMETRÍA INDUSTRIAL 3D AUTÓNOMA; no necesita librerías descargables.
+const c=palette;
+cube(0,-.38,0,26,.75,13,c.concrete,{metal:.05});cube(0,.02,0,25.5,.05,12.3,c.dark,{metal:.08});
+for(let x=-12;x<=12;x+=2){cube(x,.05,-5.85,1.15,.015,.09,c.yellow,{metal:.04});cube(x,.05,5.85,1.15,.015,.09,c.yellow,{metal:.04})}
+for(let x=-11.3;x<=11.3;x+=1.55)for(let z=-5.25;z<=5.25;z+=1.75){cube(x,.056,z,.02,.016,1.68,[.32,.39,.40],{metal:0});cube(x,.056,z,1.38,.016,.025,[.32,.39,.40],{metal:0})}
+// TANQUE HORIZONTAL DE GAS NATURAL - representación didáctica
+cube(-8.35,.36,-1.4,4.2,.65,2.65,c.dark2);
+cyl(-8.4,1.9,-1.4,1.13,3.75,c.light,'x',{tag:'tank'});
+for(let x of [-10.3,-6.5]){cyl(x,1.9,-1.4,1.14,.16,c.steel,'x');for(let k=0;k<12;k++){let a=k*Math.PI/6;ball(x,1.9+1.13*Math.cos(a),-1.4+1.13*Math.sin(a),.045,c.silver)}}
+for(let x of [-9.7,-7.05]) cube(x,.88,-1.4,.48,.8,1.92,c.dark);
+const tankValve=ring(-6.1,2.95,-1.4,.36,.29,.08,c.copper,{tag:'valve'});
+pipe([[-6.55,2.65,-1.4],[-5.78,2.65,-1.4],[-5.78,3.7,-1.4],[-3.65,3.7,-1.4],[-3.65,2.9,0]],.095,c.yellow,'gasLine');
+for(let x of [-5.78,-3.65])cyl(x,3.7,-1.4,.17,.2,c.copper,'y');
+// MOTOR INDUSTRIAL A GAS, CUATRO CILINDROS EN LINEA, VISTA PARCIALMENTE ABIERTA
+cube(-1.85,.47,0,6.45,.62,2.8,c.dark2);
+cube(-2.0,1.1,-.58,4.95,1.23,1.65,c.steel);
+cube(-2.0,2.76,-.65,4.95,.36,1.45,c.silver);
+cube(-2.0,.56,1.02,5.5,.22,.27,c.dark);
+const pistonXs=[-3.8,-2.6,-1.4,-.2];
+const pistons=[], rods=[],fire=[];
+for(let i=0;i<4;i++){
+ let x=pistonXs[i];
+ // camisa de cilindro abierta hacia la vista principal (Z+)
+ cyl(x,2.05,.40,.48,1.18,c.dark,'y',{tag:'cylinder'});
+ cyl(x,2.73,.4,.54,.12,c.silver,'y');
+ let p=cyl(x,1.72,.93,.33,.39,c.copper,'y',{tag:'piston'});pistons.push(p);
+ let rod=cyl(x,1.11,1.00,.07,.85,c.silver,'y',{tag:'rod'});rods.push(rod);
+ for(let y of [2.45,2.68])cube(x,y,1.15,.57,.06,.18,c.dark);
+ let spark=ball(x,2.54,1.10,.13,c.yellow,{tag:'fire',emission:.7});fire.push(spark);
+}
+// Manifold, escape industrial y componentes auxiliares
+pipe([[-4.15,2.84,-.95],[-4.15,3.35,-1.2],[-.2,3.35,-1.2],[.10,4.65,-1.2]],.14,c.steel);
+cyl(.10,4.98,-1.2,.23,.70,c.dark,'y');cyl(.10,5.36,-1.2,.30,.10,c.copper,'y');
+for(let x of [-3.8,-2.6,-1.4,-.2])pipe([[x,2.8,-.7],[x,3.35,-1.2]],.056,c.copper);
+const crankParts=[];
+cyl(-1.9,1.70,0,.18,5.2,c.steel,'x',{tag:'crank',spin:'engine'});
+for(let i=0;i<4;i++){
+ let x=pistonXs[i];
+ let disc=cyl(x,1.70,0,.35,.13,c.silver,'x',{spin:'engine'});crankParts.push(disc);
+ let tip=ball(x,1.70+.27*Math.cos(i*Math.PI),.27*Math.sin(i*Math.PI),.12,c.yellow,{spin:'engine'});crankParts.push(tip)
+}
+for(let x of [-4.3,.5]){cube(x,.54,0,.42,.86,2.0,c.dark2)}
+const flywheel=ring(.85,1.7,0,.81,.56,.26,c.copper,{spin:'engine',tag:'flywheel'});
+for(let i=0;i<10;i++){let a=i*2*Math.PI/10;ball(.85,1.7+.70*Math.cos(a),.70*Math.sin(a),.095,i%2?c.yellow:c.light,{spin:'engine'})}
+// Acoplamiento del motor y del generador
+cyl(1.38,1.7,0,.15,1.4,c.silver,'x',{spin:'engine'});
+for(let x of [1.02,1.74]){cyl(x,1.7,0,.34,.12,c.dark,'x',{spin:'engine'});for(let i=0;i<8;i++){let a=i*Math.PI/4;ball(x,1.7+.29*Math.cos(a),.29*Math.sin(a),.055,c.copper,{spin:'engine'})}}
+// GENERADOR SÍNCRONO DE ROTOR BOBINADO: CARCASA ABIERTA, ESTATOR, DEVANADOS, POLOS
+cube(4.6,.52,0,5.1,.71,3.15,c.dark2);
+for(let x of [2.9,6.2])cube(x,.95,0,.62,.58,1.9,c.dark);
+const genShells=[],shellCuts=[];
+for(let x of [3.0,4.45,5.9]){
+ genShells.push(ring(x,1.73,0,1.53,1.39,1.43,c.steel,{start:.08,end:Math.PI*1.08,tag:'shell'}));
+ shellCuts.push(ring(x,1.73,0,1.53,1.39,1.43,c.dark,{start:Math.PI*1.08,end:Math.PI*2.08,tag:'cutShell'}));
+}
+for(let x of [2.41,6.52])ring(x,1.73,0,1.60,1.17,.14,c.silver);
+for(let i=0;i<24;i++){
+ let a=i*Math.PI/12, y=1.73+1.19*Math.cos(a),z=1.19*Math.sin(a);
+ cyl(4.48,y,z,.065,3.45,i%3?c.copper:c.yellow,'x',{tag:'stator'});
+ for(let x of [2.86,6.08])ball(x,y,z,.09,c.yellow);
+}
+cyl(4.48,1.73,0,.39,4.22,c.silver,'x',{spin:'generator'});
+for(let x of [2.9,6.15])cyl(x,1.73,0,.52,.19,c.dark,'x',{spin:'generator'});
+const poleMeshes=[];
+function rebuildPoles(){
+ for(const ob of poleMeshes){let at=meshes.indexOf(ob);if(at>=0)meshes.splice(at,1)}
+ poleMeshes.length=0;
+ const n=state.poles;
+ for(let i=0;i<n;i++){
+  let a=i*2*Math.PI/n, yy=1.73+.83*Math.cos(a),zz=.83*Math.sin(a);
+  let pole=cube(4.48,yy,zz,2.85,.30,.32,i%2?c.blue:c.red,{spin:'generator',tag:'pole'});
+  pole.rot=[a,0,0];poleMeshes.push(pole);
+  for(let x of [3.5,5.42]){
+   let winding=ball(x,1.73+.79*Math.cos(a),.79*Math.sin(a),.115,c.copper,{spin:'generator',emission:.1});poleMeshes.push(winding)
+  }
+ }
+}
+// Anillos colectores y ventilador
+for(let x of [6.70,6.87])cyl(x,1.73,0,.3,.12,c.copper,'x',{spin:'generator'});
+for(let i=0;i<9;i++){let a=i*2*Math.PI/9;cube(6.64,1.73+.72*Math.cos(a),.72*Math.sin(a),.11,.24,.09,c.copper,{spin:'generator'})}
+// TABLERO, TRANSFORMADOR Y SALIDAS
+cube(8.65,.40,-2.45,3.15,.66,2.7,c.dark2);
+cube(8.65,1.52,-2.45,2.85,1.70,2.15,c.steel);
+for(let x of [7.9,8.65,9.4]){cyl(x,2.60,-2.45,.15,.74,c.copper);for(let y of [2.48,2.68,2.88])cyl(x,y,-2.45,.23,.06,c.silver)}
+for(let x=7.5;x<9.95;x+=.38)cube(x,1.55,-1.32,.08,1.35,.12,c.dark);
+pipe([[6.1,2.42,-1.2],[6.7,3.25,-1.6],[8.0,3.28,-2.3]],.095,c.green,'electric');
+pipe([[9.88,2.5,-2.45],[10.8,2.5,-2.45],[10.8,2.8,-1.9]],.085,c.green,'bus');
+const loadBase=cube(9.65,.67,2.15,2.45,1.18,1.6,c.dark,{tag:'loadbase'});
+for(let i=0;i<4;i++)cube(8.85+i*.54,1.28,2.72,.4,.15,.12,c.steel);
+const modules={res:[],ind:[],cap:[]};
+for(let i=0;i<4;i++)modules.res.push(cube(8.99+i*.40,1.53,3.0,.16,.52,.13,c.copper,{tag:'resistor'}));
+for(let i=0;i<3;i++)modules.ind.push(ring(9.03+i*.52,1.55,3.05,.23,.14,.15,c.copper,{tag:'inductor'}));
+for(let i=0;i<3;i++){
+ modules.cap.push(cube(9.02+i*.52,1.52,3.08,.045,.52,.24,c.blue,{tag:'capacitor'}));
+ modules.cap.push(cube(9.16+i*.52,1.52,3.08,.045,.52,.24,c.silver,{tag:'capacitor'}));
+}
+pipe([[10.80,2.80,-1.90],[10.75,3.2,1.40],[9.63,2.3,2.2]],.075,c.green,'loadLine');
+pipe([[10.8,2.8,-1.9],[11.6,3.6,-3.5],[11.6,4.9,-3.5]],.065,c.blue,'gridLine');
+cube(11.6,2.70,-3.5,.25,5.35,.25,c.steel);cube(11.6,5.0,-3.5,2.2,.12,.20,c.dark);
+for(let i=-1;i<=1;i++)cyl(11.6+i*.62,5.37,-3.5,.13,.54,c.copper,'y');
+const breaker=cube(10.80,3.24,-1.9,.12,.68,.15,c.copper,{tag:'breaker'});
+const breakerLamp=ball(10.8,2.8,-1.9,.18,c.red,{emission:.15,tag:'breakerLamp'});
+const genLamp=ball(9.55,1.86,2.90,.18,c.green,{emission:.15,tag:'loadLamp'});
+// EFECTOS 3D: LUCES, CIRCULACIÓN DE GAS Y POTENCIA, INDICADORES BAJO MAQUINARIA
+const flameBalls=[];
+for(let i=0;i<4;i++){let f=ball(pistonXs[i],2.54,1.12,.14,c.yellow,{emission:1,tag:'flame'});flameBalls.push(f)}
+const spot={};
+for(const [key,x,z,r] of [['tank',-8.4,-1.4,1.7],['engine',-2,0,2.45],['generator',4.45,0,1.9],['output',9.0,-2.5,1.55]]){
+ const points=[];for(let i=0;i<=48;i++){let a=i*2*Math.PI/48;points.push([x+r*Math.cos(a),.085,z+r*Math.sin(a)])}
+ spot[key]=pipe(points,.045,c.yellow,'spot');spot[key].visible=false;
+}
+const gasRoute=[[-6.5,2.65,-1.4],[-5.78,2.65,-1.4],[-5.78,3.7,-1.4],[-3.65,3.7,-1.4],[-3.65,2.9,0]];
+const elecRoute=[[6.1,2.42,-1.2],[6.7,3.25,-1.6],[8,3.28,-2.3],[10.8,2.8,-1.9],[10.75,3.2,1.4],[9.63,2.3,2.2]];
+const gridRoute=[[10.8,2.8,-1.9],[11.6,3.6,-3.5],[11.6,4.9,-3.5]];
+const dots=[];
+function newDots(route,num,color,r,kind){for(let i=0;i<num;i++)dots.push({ob:ball(...route[0],r,color,{emission:1,tag:'particle'}),route,offset:i/num,kind})}
+newDots(gasRoute,15,c.yellow,.09,'gas');newDots(elecRoute,18,c.green,.095,'power');newDots(gridRoute,10,c.blue,.085,'grid');
+// CÁMARA: ratón permite orbitar, rueda zoom, botones enfocan corte/maquinaria
+let camera={target:[0,1.9,0],radius:24,yaw:.72,pitch:.35,desired:[0,1.9,0],desiredRadius:24,desiredYaw:.72,desiredPitch:.35};
+const views={all:{target:[.25,1.8,0],yaw:.79,pitch:.40,rad:30},engine:{target:[-1.85,1.8,0],yaw:.94,pitch:.18,rad:8.7},generator:{target:[4.50,1.80,0],yaw:.98,pitch:.18,rad:7.5},cut:{target:[2.2,1.8,0],yaw:1.18,pitch:.27,rad:12.4}};
+let cutOpen=false,activeView='all';
+function setView(v){if(!views[v])return;const o=views[v];camera.desired=[...o.target];camera.desiredRadius=o.rad;camera.desiredYaw=o.yaw;camera.desiredPitch=o.pitch;activeView=v;cutOpen=(v==='cut'||v==='generator');$('viewSel').value=v;$('viewChip').textContent={all:'Planta completa',engine:'Motor a gas',generator:'Generador síncrono',cut:'Corte interno'}[v]}
+let dragging=false,px=0,py=0;
+canvas.addEventListener('pointerdown',e=>{dragging=true;px=e.clientX;py=e.clientY;canvas.setPointerCapture(e.pointerId)});
+canvas.addEventListener('pointermove',e=>{if(!dragging)return;let dx=e.clientX-px,dy=e.clientY-py;px=e.clientX;py=e.clientY;camera.desiredYaw-=dx*.006;camera.desiredPitch=clamp(camera.desiredPitch+dy*.005,-.05,1.30)});
+canvas.addEventListener('pointerup',()=>dragging=false);canvas.addEventListener('pointercancel',()=>dragging=false);
+canvas.addEventListener('wheel',e=>{e.preventDefault();camera.desiredRadius=clamp(camera.desiredRadius*Math.exp(e.deltaY*.001),3.5,40)},{passive:false});
+
+// ESTADO / MODELO DINÁMICO REDUCIDO, DOCUMENTADO Y DETERMINISTA
+const state={stage:'off',t:0,spin:0,gas:0.55,exc:1,load:4,kind:'res',poles:4,requested:'island',connected:false,
+ f:0,rpm:0,V:0,P:0,Q:0,Pm:0,I:0,net:0,Qnet:0,Qload:0,delta:0,phi:0,pf:1,focus:'',focusUntil:0,infoKey:'gas',sequence:0};
+const baseV=13.8,baseS=10,X=.60;
+const gasValues={low:.35,mid:.55,high:.75,max:.95},excValues={low:.8,nom:1.0,high:1.2};
+const hist=[],marks=[];let sampleAccum=0,graphAccum=0;
+function showInfo(key){
+ const d={
+ gas:['Suministro de gas','Tanque, tubería y motor','Más gas = más combustión, más par del motor y más potencia mecánica.','Potencia y frecuencia'],
+ exc:['Excitación del rotor','Generador','En isla cambia sobre todo la tensión; en red cambia sobre todo la potencia reactiva y el fasor E.','Tensión, MVAr y fasores'],
+ demand:['Demanda eléctrica','Banco de carga y salida','Más demanda = más corriente. En isla cambia la frecuencia; en red cambia el intercambio con la red.','Frecuencia, potencia e intercambio con red'],
+ kind:['Tipo de carga','Banco de carga','Resistiva ≈ Q casi cero. Inductiva = Q positiva. Capacitiva = Q negativa.','Reactiva y fasores'],
+ poles:['Número de polos','Rotor del generador','Cambia el número de polos visibles y la velocidad síncrona requerida para 60 Hz.','Velocidad y frecuencia'],
+ mode:['Conexión eléctrica','Salida y conexión de red','Aislado: la red está desconectada. Red 60 Hz: el sistema externo fija la frecuencia.','Hz, MW, MVAr e intercambio con red'],
+ view:['Vista de cámara','Equipo enfocado','La vista cambia, no la operación eléctrica.','—']
+ }[key];if(!d)return;
+ for(const [id,i] of [['infoVar',0],['infoPlant',1],['infoEffect',2],['infoGraph',3]])$(id).textContent=d[i];state.infoKey=key;
+}
+function indicate(key,text){
+ state.focus=key;state.focusUntil=performance.now()+5500;$('activeChange').textContent=text;
+ const view={tank:'all',engine:'engine',generator:'generator',output:'all'}[key];if(view)setView(view);
+ marks.push({t:state.t});while(marks.length>30)marks.shift();
+}
+function modeUI(){ $('btnIsland').classList.toggle('active',state.requested==='island');$('btnGrid').classList.toggle('active',state.requested==='grid');$('modeBadge').textContent=state.requested==='island'?'MODO: AISLADO':state.connected?'CONECTADO A RED 60 HZ':state.stage==='synchronizing'?'SINCRONIZANDO 60 HZ':'RED SOLICITADA · ESPERANDO CONEXIÓN'}
+function updateKind(){for(const [k,obs] of Object.entries(modules))for(const ob of obs)ob.visible=(state.kind===k);$('loadPill').textContent='Carga: '+({res:'resistiva',ind:'inductiva',cap:'capacitiva'}[state.kind])}
+function start(){if(['starting','running','synchronizing'].includes(state.stage))return;
+ state.stage='starting';state.sequence=0;state.connected=false;indicate('engine','Arranque: se abre gas, los pistones se mueven y el rotor acelera.');$('statePill').textContent='Estado: arrancando';
+}
+function stop(emergency=false){state.stage=emergency?'trip':'stopping';state.connected=false;state.requested='island';modeUI();indicate('engine',emergency?'Paro de emergencia: se corta el aporte mecánico.':'Parada: cae el par y disminuyen rpm, Hz y MW.')}
+$('btnStart').onclick=start;$('btnStop').onclick=()=>stop(false);$('btnTrip').onclick=()=>stop(true);
+$('btnIsland').onclick=()=>{state.requested='island';state.connected=false;if(state.stage==='synchronizing')state.stage='running';showInfo('mode');indicate('output','Red desconectada: el generador alimenta solo la carga local.');modeUI()};
+$('btnGrid').onclick=()=>{state.requested='grid';if(state.stage==='running')state.stage='synchronizing';state.sequence=0;showInfo('mode');indicate('output','Se comprueba el sincronismo y luego se conecta la red de 60 Hz.');modeUI()};
+$('gasSel').onchange=e=>{state.gas=gasValues[e.target.value];showInfo('gas');indicate('tank','GAS '+Math.round(state.gas*100)+' %: cambia caudal y potencia mecánica del motor.')};
+$('excSel').onchange=e=>{state.exc=excValues[e.target.value];showInfo('exc');indicate('generator','EXCITACIÓN '+Math.round(state.exc*100)+' %: observa rotor, tensión, MVAr y fasores.')};
+$('demandSel').onchange=e=>{state.load=Number(e.target.value);showInfo('demand');indicate('output','DEMANDA '+state.load+' MW: observa el banco de carga y la respuesta del generador.')};
+$('loadTypeSel').onchange=e=>{state.kind=e.target.value;updateKind();showInfo('kind');indicate('output','CARGA '+({res:'RESISTIVA',ind:'INDUCTIVA',cap:'CAPACITIVA'}[state.kind])+': cambian los componentes físicos y los fasores.')};
+$('polesSel').onchange=e=>{const n=Number(e.target.value);
+ if(state.stage!=='off'){e.target.value=String(state.poles);showInfo('poles');indicate('generator','Detén la central para cambiar de máquina y observar otro número de polos.');return}
+ state.poles=n;rebuildPoles();state.focus='generator';state.focusUntil=performance.now()+2200;setView('generator');showInfo('poles');indicate('generator',n+' POLOS: para 60 Hz requiere '+Math.round(7200/n)+' rpm.');};
+$('viewSel').onchange=e=>{setView(e.target.value);showInfo('view');$('activeChange').textContent='Vista '+e.target.selectedOptions[0].textContent};
+
+const practiceData={
+ reactiva:{ready:'Base: 4 polos, gas 55 %, demanda 4 MW, carga resistiva y excitación 100 %. Inicia el motor. Mira Q carga ≈ 0.',change:'Ahora hay bobinas en 3D. Mira «Reactiva carga» y sus fasores: Q positiva e I atrasada.',field:'kind',value:'ind',sel:'loadTypeSel'},
+ combustible:{ready:'Base: gas 55 %, demanda 4 MW, carga resistiva, modo aislado. Inicia y espera velocidad estable.',change:'Gas sube a 75 %. Observa el conducto y el motor; compara las tarjetas de rpm y frecuencia.',field:'gas',value:'high',sel:'gasSel'},
+ excitacion:{ready:'Base: excitación nominal 100 %, gas 55 %, carga resistiva. Inicia el motor. Observa V antes del cambio.',change:'Excitación sube a 120 %. Mira generador, tensión, reactiva y fasor E.',field:'exc',value:'high',sel:'excSel'}
+};
+function preparePractice(){
+ if(state.stage!=='off'){stop(false);$('practiceGuide').textContent='Deja terminar la parada y pulsa «Preparar prueba» otra vez.';return;}
+ const p=practiceData[$('practiceSel').value];
+ state.gas=.55;state.exc=1;state.load=4;state.kind='res';state.requested='island';state.connected=false;state.poles=4;
+ $('gasSel').value='mid';$('excSel').value='nom';$('demandSel').value='4';$('loadTypeSel').value='res';$('polesSel').value='4';
+ rebuildPoles();updateKind();modeUI();setView('all');showInfo('kind');
+ $('practiceGuide').textContent=p.ready;
+ start();
+}
+function makePracticeChange(){
+ const p=practiceData[$('practiceSel').value];
+ if(state.stage==='off'||state.stage==='starting'){$('practiceGuide').textContent='Primero prepara la prueba y espera a que el motor termine de arrancar.';return;}
+ $(p.sel).value=p.value;
+ $(p.sel).dispatchEvent(new Event('change',{bubbles:true}));
+ $('practiceGuide').textContent=p.change;
+}
+$('practiceReady').onclick=preparePractice;
+$('practiceChange').onclick=makePracticeChange;
+$('practiceSel').onchange=e=>{$('practiceGuide').textContent='Seleccionada práctica '+e.target.selectedOptions[0].textContent+'. Pulsa «Preparar prueba».'};
+
+function step(dt){
+ state.t+=dt;
+ const active=['starting','running','synchronizing'].includes(state.stage);
+ if(state.stage==='starting'){
+   state.sequence+=dt;
+   if(state.sequence>=4.2){state.stage=state.requested==='grid'?'synchronizing':'running';state.sequence=0;}
+ }
+ if(state.stage==='synchronizing'){
+   state.sequence+=dt;
+   if(state.sequence>=2.0 && Math.abs(state.f-60)<0.75){state.stage='running';state.connected=true;state.sequence=0;indicate('output','Red conectada: el generador quedó sincronizado a 60 Hz.');modeUI()}
+ }
+ const alpha=(tau)=>1-Math.exp(-dt/tau);
+ const input=active?state.gas:0;
+ const pTarget=active?(0.7+8.3*input):0;
+ state.Pm=mix(state.Pm,pTarget,alpha(1.7));
+ const targetRPM=7200/state.poles;
+ const targetLoad=state.load;
+ state.Qload=active?(state.kind==='res'?0:state.kind==='ind'?targetLoad*.55:-targetLoad*.44):0;
+ const nominal=active && state.sequence>=0;
+ if(state.connected && active){
+   state.f=mix(state.f,60,alpha(.55));
+   state.rpm=mix(state.rpm,targetRPM,alpha(.55));
+   state.V=mix(state.V,baseV,alpha(.6));
+   state.P=mix(state.P,Math.max(0,Math.min(8,state.Pm-.1)),alpha(1.25));
+   const vp=state.V/baseV, epu=state.exc*1.03, ppu=state.P/baseS;
+   const delta=Math.asin(clamp(ppu*X/(Math.max(.1,epu*vp)),-.96,.96));
+   const qpu=(epu*vp*Math.cos(delta)-vp*vp)/X;
+   state.Q=mix(state.Q,baseS*qpu,alpha(.8));
+   state.delta=delta*180/Math.PI;
+   state.net=targetLoad-state.P;state.Qnet=state.Qload-state.Q;
+ }else if(active){
+   const mismatch=state.Pm-targetLoad;
+   const freqTarget=state.stage==='synchronizing'?60:clamp(60+1.1*mismatch,54,66);
+   const accelFactor=state.stage==='starting'?Math.min(1,state.sequence/4.2):1;
+   state.f=mix(state.f,freqTarget*accelFactor,alpha(state.stage==='starting'?1.6:1.1));
+   state.rpm=mix(state.rpm,state.f*120/state.poles,alpha(.42));
+   let vpu=state.exc*(.97-.012*Math.max(0,targetLoad-4));
+   state.V=mix(state.V,baseV*clamp(vpu,.50,1.28)*Math.min(1,state.f/60),alpha(.8));
+   state.P=mix(state.P,Math.max(0,Math.min(targetLoad,state.Pm)),alpha(.85));
+   state.Q=mix(state.Q,state.Qload*clamp(state.V/baseV,0,1.25),alpha(.8));
+   state.net=0;state.Qnet=0;
+ }else{
+   state.rpm=mix(state.rpm,0,alpha(state.stage==='trip'?.60:2.0));
+   state.f=state.rpm*state.poles/120;
+   state.V=mix(state.V,0,alpha(.75));state.P=mix(state.P,0,alpha(.7));state.Q=mix(state.Q,0,alpha(.7));state.net=0;state.Qnet=0;
+   if(state.rpm<12.0&&state.stage!=='off'){state.stage='off';state.rpm=0;state.f=0;}
+ }
+ const kva=Math.hypot(state.P,state.Q);
+ state.I=state.V>.05 ? kva*1e6/(Math.sqrt(3)*state.V*1000):0;
+ state.pf=kva>.005?state.P/kva:1;
+ state.phi=Math.atan2(state.Q,state.P);
+ if(!state.connected){
+  const vp=state.V/baseV;const ir=state.P/baseS/Math.max(vp,.1),ii=-state.Q/baseS/Math.max(vp,.1);
+  const er=vp-X*ii,ei=X*ir;state.delta=Math.atan2(ei,er)*180/Math.PI;
+ }
+ if(state.rpm>0)state.spin+=dt*(state.rpm/targetRPM)*5.5;
+ if(state.stage==='running')$('statePill').textContent='Estado: servicio';
+ else if(state.stage==='starting')$('statePill').textContent='Estado: arrancando';
+ else if(state.stage==='synchronizing')$('statePill').textContent='Estado: sincronizando';
+ else $('statePill').textContent='Estado: '+(state.stage==='off'?'detenido':'parando');
+ $('effectPill').textContent=state.connected?'Efecto: MW y MVAr':'Efecto: velocidad y Hz';
+ if(state.stage==='off')modeUI();
+}
+// ANIMACIÓN: el movimiento depende realmente de rpm, combustible y potencia.
+function placeRoute(route,t){const k=t*(route.length-1),i=Math.min(route.length-2,Math.floor(k)),r=k-i;return vadd(vmul(route[i],1-r),vmul(route[i+1],r))}
+function animate(){
+ const ratio=clamp(state.rpm/(7200/state.poles),0,1.35);
+ for(let i=0;i<pistons.length;i++){
+  const angle=state.spin*1.15+[0,Math.PI,Math.PI,0][i];
+  const offset=Math.sin(angle)*.22*ratio;
+  pistons[i].pos[1]=1.72+offset;rods[i].pos[1]=1.13+offset*.52;
+  fire[i].emission=(['starting','running','synchronizing'].includes(state.stage)?state.gas*1.4:0);
+  flameBalls[i].visible=['starting','running','synchronizing'].includes(state.stage);
+  flameBalls[i].scale=[1,clamp(.7+state.gas*.9+.2*Math.sin(state.spin*4+i),.5,1.9),1];
+ }
+ tankValve.rot=[0,state.t*.65*(state.gas/.55),0];
+ breaker.rot=[0,0,state.connected?Math.PI/2.1:0];
+ breakerLamp.color=state.connected?c.green:c.red;breakerLamp.emission=state.connected?.9:.15;
+ genLamp.emission=state.P>.1?clamp(state.P/8,.18,1.3):0;
+ for(const [key,ob] of Object.entries(spot))ob.visible=state.focus===key && performance.now()<state.focusUntil;
+ if(performance.now()>state.focusUntil)state.focus='';
+ for(const d of dots){
+  const energy=d.kind==='gas'?state.gas:d.kind==='power'?state.P/8:Math.abs(state.net)/8;
+  const valid=d.kind==='gas'?['starting','running','synchronizing'].includes(state.stage):d.kind==='power'?state.P>.1:state.connected&&Math.abs(state.net)>.1;
+  d.ob.visible=valid; if(!valid)continue;
+  const pathTime=(state.t*(.17+energy*.45)+d.offset)%1;
+  const p=placeRoute(d.route,d.kind==='grid'&&state.net>0?1-pathTime:pathTime);d.ob.pos=[...p];
+ }
+}
+// OPENGL 3D + ELEMENTOS 2D SUPERPUESTOS
+let projected=null;
+
+// Visor alternativo de geometría 3D proyectada con Canvas 2D.
+// Se usa únicamente cuando el navegador no ofrece WebGL: no requiere Internet.
+let lastSoftwareFrame=0;
+function softwareFrame(now){
+ if(webglAvailable||!fallbackCtx)return;
+ if(now-lastSoftwareFrame<110)return;
+ lastSoftwareFrame=now;
+ const rect=canvas.getBoundingClientRect();
+ const dpr=Math.min(window.devicePixelRatio||1,1.15),w=Math.max(1,Math.round(rect.width*dpr)),h=Math.max(1,Math.round(rect.height*dpr));
+ if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h}
+ const ctx=fallbackCtx;
+ ctx.setTransform(dpr,0,0,dpr,0,0);
+ const W=rect.width,H=rect.height;
+ ctx.fillStyle='#102634';ctx.fillRect(0,0,W,H);
+ const grad=ctx.createRadialGradient(W*.45,H*.33,15,W*.45,H*.33,W*.78);
+ grad.addColorStop(0,'#274c60');grad.addColorStop(1,'#081925');ctx.fillStyle=grad;ctx.fillRect(0,0,W,H);
+ for(let k=0;k<3;k++)camera.target[k]=mix(camera.target[k],camera.desired[k],.15);
+ camera.yaw=mix(camera.yaw,camera.desiredYaw,.15);camera.pitch=mix(camera.pitch,camera.desiredPitch,.15);camera.radius=mix(camera.radius,camera.desiredRadius,.15);
+ const eye=[camera.target[0]+camera.radius*Math.sin(camera.yaw)*Math.cos(camera.pitch),camera.target[1]+camera.radius*Math.sin(camera.pitch),camera.target[2]+camera.radius*Math.cos(camera.yaw)*Math.cos(camera.pitch)];
+ const pv=M.mul(M.persp(49*Math.PI/180,W/H,.1,110),M.look(eye,camera.target));
+ projected={pv,w:W,h:H};
+ const tris=[];
+ for(const ob of meshes){
+  if(!ob.visible)continue;
+  if(cutOpen&&ob.tag==='shell')continue;
+  if(!cutOpen&&ob.tag==='cutShell')continue;
+  const data=ob.shape.positions;if(!data)continue;
+  let matrix=M.trans(...ob.pos);
+  if(ob.spin==='engine'||ob.spin==='generator'){
+   const center=ob.spin==='engine'?[.85,1.7,0]:[4.48,1.73,0];
+   matrix=M.mul(M.trans(...center),M.mul(M.rx(state.spin),M.mul(M.trans(...center.map(x=>-x)),matrix)));
+  }
+  if(ob.rot){matrix=M.mul(matrix,M.rx(ob.rot[0]||0));matrix=M.mul(matrix,M.ry(ob.rot[1]||0));}
+  matrix=M.mul(matrix,M.scale(...(ob.scale||[1,1,1])));
+  // Reducimos la densidad de los modelos redondos solo en la vista alternativa.
+  const n=data.length/9;const stride=n>420?5:n>240?3:n>135?2:1;
+  for(let i=0;i<n;i+=stride){
+   let world=[],screen=[],depth=0,bad=false;
+   for(let k=0;k<3;k++){
+    const at=i*9+k*3;
+    const v=M.apply(matrix,[data[at],data[at+1],data[at+2]]);
+    const p=M.apply(pv,[v[0],v[1],v[2]]);
+    if(p[3]<=.04){bad=true;break}
+    const X=(p[0]/p[3]*.5+.5)*W,Y=(-p[1]/p[3]*.5+.5)*H;
+    world.push(v);screen.push([X,Y]);depth+=p[2]/p[3];
+   }
+   if(bad)continue;
+   const [[ax,ay],[bx,by],[cx,cy]]=screen;
+   if(Math.max(ax,bx,cx)<-25||Math.min(ax,bx,cx)>W+25||Math.max(ay,by,cy)<-25||Math.min(ay,by,cy)>H+25)continue;
+   let nrm=norm(cross(vsub(world[1],world[0]),vsub(world[2],world[0])));
+   const center=vmul(vadd(vadd(world[0],world[1]),world[2]),1/3);
+   const toward=norm(vsub(eye,center));
+   if(dot(nrm,toward)<=-.13&&ob.alpha>=.98)continue;
+   const key=Math.max(0,.39+.53*Math.max(0,dot(nrm,norm([-.3,.85,.8])))+.15*Math.max(0,dot(nrm,norm([.7,.55,-.2]))));
+   const rgb=ob.color.map(v=>Math.max(0,Math.min(255,Math.round(255*(v*key+v*(ob.emission||0)*.37)))));
+   tris.push([depth/3,screen,`rgba(${rgb.join(',')},${Math.max(.25,ob.alpha)})`]);
+  }
+ }
+ // Orden de profundidad (del fondo hacia la cámara).
+ tris.sort((a,b)=>b[0]-a[0]);
+ for(const item of tris){const p=item[1];ctx.beginPath();ctx.moveTo(p[0][0],p[0][1]);ctx.lineTo(p[1][0],p[1][1]);ctx.lineTo(p[2][0],p[2][1]);ctx.closePath();ctx.fillStyle=item[2];ctx.fill();}
+ ctx.strokeStyle='rgba(160,201,220,.14)';ctx.strokeRect(.5,.5,W-1,H-1);
+ labels3D();
+}
+
+function draw3D(){
+ if(!webglAvailable){softwareFrame(performance.now());return;}
+ const rect=canvas.getBoundingClientRect(),dpr=Math.min(window.devicePixelRatio||1,1.6),w=Math.max(1,Math.round(rect.width*dpr)),h=Math.max(1,Math.round(rect.height*dpr));
+ if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;gl.viewport(0,0,w,h)}
+ for(let k=0;k<3;k++)camera.target[k]=mix(camera.target[k],camera.desired[k],.09);
+ camera.yaw=mix(camera.yaw,camera.desiredYaw,.09);camera.pitch=mix(camera.pitch,camera.desiredPitch,.09);camera.radius=mix(camera.radius,camera.desiredRadius,.09);
+ const eye=[camera.target[0]+camera.radius*Math.sin(camera.yaw)*Math.cos(camera.pitch),camera.target[1]+camera.radius*Math.sin(camera.pitch),camera.target[2]+camera.radius*Math.cos(camera.yaw)*Math.cos(camera.pitch)];
+ const pv=M.mul(M.persp(49*Math.PI/180,w/h,.1,110),M.look(eye,camera.target));projected={pv,w:rect.width,h:rect.height};
+ gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.useProgram(program);gl.uniformMatrix4fv(U.vp,false,new Float32Array(pv));gl.uniform3fv(U.eye,new Float32Array(eye));
+ const transparent=[];
+ function mat4(ob){
+  let out=M.trans(...ob.pos);
+  if(ob.spin==='engine'||ob.spin==='generator'){
+    const center=ob.spin==='engine'?[.85,1.7,0]:[4.48,1.73,0];
+    out=M.mul(M.trans(...center),M.mul(M.rx(state.spin),M.mul(M.trans(...center.map(v=>-v)),out)));
+  }
+  if(ob.rot){out=M.mul(out,M.rx(ob.rot[0]||0));out=M.mul(out,M.ry(ob.rot[1]||0));}
+  return M.mul(out,M.scale(...(ob.scale||[1,1,1])));
+ }
+ function render(ob,alphaPass=false){
+  if(!ob.visible)return;
+  if(cutOpen&&ob.tag==='shell')return;
+  if(!cutOpen&&ob.tag==='cutShell')return;
+  if(ob.alpha<1&&!alphaPass){transparent.push(ob);return}
+  const sh=ob.shape;
+  gl.bindBuffer(gl.ARRAY_BUFFER,sh.pb);gl.enableVertexAttribArray(A.p);gl.vertexAttribPointer(A.p,3,gl.FLOAT,false,0,0);
+  gl.bindBuffer(gl.ARRAY_BUFFER,sh.nb);gl.enableVertexAttribArray(A.n);gl.vertexAttribPointer(A.n,3,gl.FLOAT,false,0,0);
+  gl.uniformMatrix4fv(U.m,false,new Float32Array(mat4(ob)));
+  gl.uniform3fv(U.c,new Float32Array(ob.color));gl.uniform1f(U.met,ob.metal);gl.uniform1f(U.alpha,ob.alpha);gl.uniform1f(U.em,ob.emission||0);
+  gl.drawArrays(gl.TRIANGLES,0,sh.n);
+ }
+ for(const ob of meshes)render(ob);
+ gl.depthMask(false);for(const ob of transparent)render(ob,true);gl.depthMask(true);
+ labels3D();
+}
+function labels3D(){if(!projected)return;
+ const objects={tagTank:[-8.4,3.25,-1.4],tagEngine:[-2,3.4,1.1],tagGen:[4.5,3.3,0],tagLoad:[9.6,2.15,3],tagGrid:[11.6,5.9,-3.5]};
+ const labels={tagTank:'GAS '+Math.round(state.gas*100)+' %',tagEngine:'MOTOR '+Math.round(state.rpm)+' rpm',tagGen:'GENERADOR '+state.poles+'P · '+state.P.toFixed(2)+' MW',tagLoad:state.kind.toUpperCase()+' · '+state.load+' MW',tagGrid:state.connected?'RED '+(state.net>=0?'+':'')+state.net.toFixed(2)+' MW':'RED DESCONECTADA'};
+ for(const id of Object.keys(objects)){
+  const node=$(id),v=M.apply(projected.pv,objects[id]),x=(v[0]/v[3]*.5+.5)*projected.w,y=(-v[1]/v[3]*.5+.5)*projected.h;
+  const good=v[3]>0&&x>42&&x<projected.w-42&&y>35&&y<projected.h-55;
+  node.style.display=good?'block':'none';if(!good)continue;node.style.left=clamp(x,104,projected.w-104)+'px';node.style.top=clamp(y,32,projected.h-45)+'px';node.textContent=labels[id];
+  node.classList.toggle('active',state.focus===({tagTank:'tank',tagEngine:'engine',tagGen:'generator',tagLoad:'output',tagGrid:'output'}[id]));
+ }
+}
+function renderStats(){
+ $('electricConnection').textContent=state.connected?'RED CONECTADA · Frecuencia 60 Hz · Se intercambia energía con el sistema':state.stage==='synchronizing'?'SINCRONIZANDO · Preparando conexión a la red':'RED DESCONECTADA · El generador alimenta solamente la carga local';
+ const values={freqCard:state.f.toFixed(2),rpmCard:Math.round(state.rpm),voltCard:state.V.toFixed(2),currCard:Math.round(state.I),mwCard:state.P.toFixed(2),mvarCard:state.Q.toFixed(2),gasCard:Math.round(state.gas*100),netCard:state.connected?(state.net>=0?'+':'')+state.net.toFixed(2):'N/A',qloadCard:(state.Qload>=0?'+':'')+state.Qload.toFixed(2),qnetCard:state.connected?(state.Qnet>=0?'+':'')+state.Qnet.toFixed(2):'N/A'};
+ for(const id of Object.keys(values))$(id).textContent=values[id];
+}
+function graphCanvas(id){const c=$id(id);const dpr=Math.min(window.devicePixelRatio||1,2),rect=c.getBoundingClientRect(),w=Math.max(10,rect.width),h=Math.max(10,rect.height);if(c.width!==Math.round(w*dpr)||c.height!==Math.round(h*dpr)){c.width=Math.round(w*dpr);c.height=Math.round(h*dpr)}const ctx=c.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);return{ctx,w,h}}
+const $id=$;
+function plotBackground(ctx,w,h){ctx.clearRect(0,0,w,h);ctx.fillStyle='#fcfaf6';ctx.fillRect(0,0,w,h);ctx.strokeStyle='#e4ded5';ctx.lineWidth=1;for(let x=35;x<w-5;x+=35){ctx.beginPath();ctx.moveTo(x,14);ctx.lineTo(x,h-25);ctx.stroke()}for(let y=18;y<h-25;y+=27){ctx.beginPath();ctx.moveTo(10,y);ctx.lineTo(w-10,y);ctx.stroke()}}
+function drawWaves(){const {ctx,w,h}=graphCanvas('waveCanvas');plotBackground(ctx,w,h);const mid=h*.56,amp=clamp(state.V/13.8,0,1.3)*Math.min(55,h*.3),colors=['#c0525f','#1e8274','#406bca'];for(let k=0;k<3;k++){ctx.beginPath();for(let x=10;x<w-9;x+=2){const ph=2*Math.PI*3*clamp(state.f/60,.2,1.25)*(x-10)/(w-20)+k*2*Math.PI/3+state.spin*state.poles*.5;const yy=mid-Math.sin(ph)*amp;if(x===10)ctx.moveTo(x,yy);else ctx.lineTo(x,yy)}ctx.strokeStyle=colors[k];ctx.lineWidth=2.1;ctx.stroke()}
+ ctx.fillStyle='#475a63';ctx.font='11px Consolas,monospace';ctx.fillText(`${state.f.toFixed(2)} Hz · ${state.V.toFixed(2)} kV`,12,15);}
+function arrow(ctx,cx,cy,x,y,color,label){ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(x,y);ctx.strokeStyle=color;ctx.lineWidth=3;ctx.stroke();let a=Math.atan2(y-cy,x-cx);ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x-8*Math.cos(a-.48),y-8*Math.sin(a-.48));ctx.lineTo(x-8*Math.cos(a+.48),y-8*Math.sin(a+.48));ctx.closePath();ctx.fillStyle=color;ctx.fill();ctx.font='bold 11px Consolas';ctx.fillText(label,x+5,y-5)}
+function drawPhasor(){const{ctx,w,h}=graphCanvas('phasorCanvas');plotBackground(ctx,w,h);const cx=w*.29,cy=h*.64,scale=Math.min(w*.23,h*.32),v=state.V/baseV;
+ ctx.strokeStyle='#91a3ac';ctx.beginPath();ctx.moveTo(9,cy);ctx.lineTo(w-9,cy);ctx.moveTo(cx,14);ctx.lineTo(cx,h-18);ctx.stroke();
+ const ir=state.P/baseS/Math.max(v,.08),ii=-state.Q/baseS/Math.max(v,.08),emr=v-X*ii,emi=X*ir;
+ arrow(ctx,cx,cy,cx+scale*v,cy,'#238576','V');arrow(ctx,cx,cy,cx+scale*emr,cy-scale*emi,'#d69b39','E');arrow(ctx,cx,cy,cx+scale*ir,cy-scale*ii,'#476cc6','I');
+ ctx.fillStyle='#56616a';ctx.font='11px Consolas';ctx.fillText(`δ ${state.delta.toFixed(1)}°`,12,14);ctx.fillText(`Qgen ${state.Q.toFixed(2)} MVAr`,Math.max(cx+78,w*.63),25);ctx.fillText(`Q carga ${state.Qload.toFixed(2)} MVAr`,Math.max(cx+78,w*.63),42);
+}
+function trend(id,key,color,lo,hi,unit){const {ctx,w,h}=graphCanvas(id);plotBackground(ctx,w,h);let left=44,top=21,right=w-15,bottom=h-29;
+ ctx.strokeStyle='#b9b8b0';ctx.strokeRect(left,top,right-left,bottom-top);
+ ctx.font='10px Consolas';ctx.fillStyle='#586975';ctx.fillText(hi.toFixed(1),5,top+5);ctx.fillText(lo.toFixed(1),5,bottom);ctx.fillText(unit,left+4,h-8);
+ const t0=Math.max(0,state.t-24),denom=24;
+ ctx.beginPath();let any=false;for(const r of hist){if(r.t<t0)continue;const x=left+(r.t-t0)/denom*(right-left);const y=bottom-(r[key]-lo)/(hi-lo)*(bottom-top);if(!any){ctx.moveTo(x,y);any=true}else ctx.lineTo(x,y)}ctx.strokeStyle=color;ctx.lineWidth=2.5;ctx.stroke();
+ for(const e of marks){if(e.t<t0)continue;const x=left+(e.t-t0)/denom*(right-left);ctx.setLineDash([3,3]);ctx.strokeStyle='#d99a53';ctx.beginPath();ctx.moveTo(x,top);ctx.lineTo(x,bottom);ctx.stroke();ctx.setLineDash([])}
+ ctx.fillStyle=color;ctx.font='bold 12px Consolas';ctx.fillText(state[key].toFixed(2)+' '+unit,right-115,top+15);
+ if(id==='loadQTrend' && state.kind==='res') graphNote(ctx,w,h,'Carga resistiva: Q ≈ 0');
+ if(id==='netTrend' && !state.connected) graphNote(ctx,w,h,'Sin red conectada');
+ if(id==='reactTrend' && Math.abs(state.Q)<0.08) graphNote(ctx,w,h,'Reactiva del generador casi nula');
+}
+
+function graphNote(ctx,w,h,msg){ctx.fillStyle='rgba(255,251,240,.92)';ctx.strokeStyle='#d8ccb4';ctx.lineWidth=1;ctx.beginPath();ctx.roundRect(w*.20,h*.38,w*.60,34,10);ctx.fill();ctx.stroke();ctx.fillStyle='#6b6b66';ctx.font='12px Segoe UI';ctx.textAlign='center';ctx.fillText(msg,w*.5,h*.54);ctx.textAlign='left';}
+
+function resize(){if(!webglAvailable)return;draw3D()}
+window.addEventListener('resize',resize);
+let last=performance.now();let totalGraph=0,historyAccumulator=0;
+function loop(now){let dt=Math.max(.001,Math.min(.06,(now-last)/1000||.016));last=now;
+ step(dt);animate();draw3D();renderStats();
+ historyAccumulator+=dt;totalGraph+=dt;
+ if(historyAccumulator>.12){historyAccumulator=0;hist.push({t:state.t,f:state.f,P:state.P,V:state.V,Q:state.Q,Qload:state.Qload,net:state.connected?state.net:0});while(hist.length&&hist[0].t<state.t-26)hist.shift()}
+ if(totalGraph>.11){totalGraph=0;drawWaves();drawPhasor();trend('freqTrend','f','#406bca',0,66,'Hz');trend('powerTrend','P','#27877c',0,8,'MW');trend('voltTrend','V','#b97036',0,18,'kV');trend('reactTrend','Q','#b95461',-4,4,'MVAr');trend('loadQTrend','Qload','#ad7b3c',-5,5,'MVAr');trend('netTrend','net','#61755b',-9,9,'MW')}
+ requestAnimationFrame(loop)
+}
+updateKind();rebuildPoles();showInfo('gas');$('activeChange').textContent='Planta detenida. Pulsa INICIAR y luego cambia un selector para observar la respuesta.';$('statePill').textContent='Estado: detenido';modeUI();requestAnimationFrame(loop);
+})();
+
+</script>
+</body>
+</html>
